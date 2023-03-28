@@ -9,7 +9,7 @@ int main(int argc, char **argv) {
   aigman aig(argv[1]);
   aig.supportfanouts();
   Param p;
-  Man man(aig.nPis, p, 3);
+  Man man(aig.nPis, p, 4);
   vector<lit> outputs;
   vector<int> vCounts(aig.nObjs);
   for(int i = aig.nPis + 1; i < aig.nObjs; i++)

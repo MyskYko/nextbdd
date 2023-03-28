@@ -8,10 +8,12 @@ namespace NextBdd {
   typedef unsigned short var;
   typedef int bvar;
   typedef unsigned lit;
-  typedef unsigned uniq;
   typedef unsigned short ref;
   typedef unsigned long long size;
   typedef unsigned edge;
+
+  typedef unsigned uniq;
+  typedef unsigned cac;
 
   static inline var VarMax() {
     return std::numeric_limits<var>::max();
@@ -30,6 +32,9 @@ namespace NextBdd {
   }
 
   static inline uniq UniqHash(lit Arg0, lit Arg1) {
+    return Arg0 + 4256249 * Arg1;
+  }
+  static inline uniq CacHash(lit Arg0, lit Arg1) {
     return Arg0 + 4256249 * Arg1;
   }
 

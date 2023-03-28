@@ -1,12 +1,9 @@
 #ifndef NEXT_BDD_MAN_H
 #define NEXT_BDD_MAN_H
 
-#include <vector>
 #include <cmath>
-#include <iostream>
-#include <iomanip>
 
-#include "NextBddTypes.h"
+#include "NextBddCache.h"
 
 namespace NextBdd {
 
@@ -15,7 +12,7 @@ namespace NextBdd {
     int nObjsAllocLog = 20;
     int nUniqueLog = 10;
     double UniqueDensity = 4;
-    int nCacheLog = 15;
+    int nCacheSizeLog = 15;
     int nCacheMaxLog = 20;
     std::vector<var> *pVar2Level = NULL;
     bool fCountOnes = false;
@@ -53,6 +50,8 @@ namespace NextBdd {
     std::vector<uniq> vUniqueMasks;
     std::vector<bvar> vUniqueCounts;
     std::vector<bvar> vUniqueTholds;
+
+    Cache *cache;
 
     int nGbc;
     bvar nReo;
@@ -206,6 +205,8 @@ namespace NextBdd {
         throw std::length_error("nVars must be less than 1024 to count ones");
       vOneCounts.resize(nObjsAlloc);
     }
+    // set up cache
+    cache = new Cache(p.nCacheSizeLog, p.nCacheMaxLog, nVerbose);
     // create nodes for variables
     nObjs = 1;
     vVars[0] = VarMax();
@@ -241,7 +242,7 @@ namespace NextBdd {
       if(!vRefs.empty())
         std::cout << "Free " << vRefs.size() << " refs" << std::endl;
     }
-    //delete cache;
+    delete cache;
   }
 
   bvar Man::CountNodes_rec(lit x) {
@@ -429,7 +430,7 @@ namespace NextBdd {
         if(RefOfBvar(a))
           ResetMark_rec(Bvar2Lit(a));
     }
-    // CacheClear();
+    cache->Clear();
     return RemovedHead;
   }
 
@@ -454,11 +455,9 @@ namespace NextBdd {
       return (x == y)? x: 0;
     if(x > y)
       std::swap(x, y);
-    lit z;
-    // lit z = CacheLookup(x, y);
-    // if(z != LitMax()) {
-    //   return z;
-    // }
+    lit z = cache->Lookup(x, y);
+    if(z != LitMax())
+      return z;
     var v;
     lit x0, x1, y0, y1;
     if(Level(x) < Level(y))
@@ -474,7 +473,7 @@ namespace NextBdd {
     z = UniqueCreate(v, z1, z0);
     DecRef(z1);
     DecRef(z0);
-    // CacheInsert(x, y, z);
+    cache->Insert(x, y, z);
     return z;
   }
 
