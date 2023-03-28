@@ -110,20 +110,20 @@ namespace NextBdd {
     inline void IncEdge(lit x) { vEdges[Lit2Bvar(x)]++; }
     inline void DecEdge(lit x) { vEdges[Lit2Bvar(x)]--; }
 
-    inline lit Bvar2Lit(bvar a) const { return a << 1; }
-    inline lit Bvar2Lit(bvar a, bool c) const { return (a << 1) ^ (lit)c; }
-    inline bvar Lit2Bvar(lit x) const { return x >> 1; }
+    inline lit Bvar2Lit(bvar a) const { return (lit)a << 1; }
+    inline lit Bvar2Lit(bvar a, bool c) const { return ((lit)a << 1) ^ (lit)c; }
+    inline bvar Lit2Bvar(lit x) const { return (bvar)(x >> 1); }
 
     inline var VarOfBvar(bvar a) const { return vVars[a]; }
-    inline lit ThenOfBvar(bvar a) const { return vObjs[a << 1]; }
-    inline lit ElseOfBvar(bvar a) const { return vObjs[(a << 1) ^ (lit)1]; }
+    inline lit ThenOfBvar(bvar a) const { return vObjs[Bvar2Lit(a)]; }
+    inline lit ElseOfBvar(bvar a) const { return vObjs[Bvar2Lit(a, true)]; }
     inline bool MarkOfBvar(bvar a) const { return vMarks[a]; }
     inline ref RefOfBvar(bvar a) const { return vRefs[a]; }
     inline edge EdgeOfBvar(bvar a) const { return vEdges[a]; }
 
     inline void SetVarOfBvar(bvar a, var v) { vVars[a] = v; }
-    inline void SetThenOfBvar(bvar a, lit x) { vObjs[a << 1] = x; }
-    inline void SetElseOfBvar(bvar a, lit x) { vObjs[(a << 1) ^ (lit)1] = x; }
+    inline void SetThenOfBvar(bvar a, lit x) { vObjs[Bvar2Lit(a)] = x; }
+    inline void SetElseOfBvar(bvar a, lit x) { vObjs[Bvar2Lit(a, true)] = x; }
     inline void SetMarkOfBvar(bvar a) { vMarks[a] = true; }
     inline void ResetMarkOfBvar(bvar a) { vMarks[a] = false; }
 
@@ -140,7 +140,6 @@ namespace NextBdd {
       *q = next;
       vUniqueCounts[v]--;
     }
-
   };
 
   void Man::SetMark_rec(lit x) {
@@ -158,7 +157,7 @@ namespace NextBdd {
     ResetMark_rec(Else(x));
   }
 
-  Man::Man(int nVars, Param p, int nVerbose) : nVars(nVars), nVerbose(nVerbose) {
+  Man::Man(int nVars, Param p, int nVerbose): nVars(nVars), nVerbose(nVerbose) {
     // parameter sanity check
     if(p.nObjsMaxLog < p.nObjsAllocLog)
       throw std::invalid_argument("nObjsMax must not be smaller than nObjsAlloc");
@@ -318,12 +317,12 @@ namespace NextBdd {
     if(!vOneCounts.empty())
       vOneCounts[*p] = OneCount(x1) / 2 + OneCount(x0) / 2;
     if(nVerbose >= 3) {
-      std::cout << "Create node " << std::setw(10) << *p
-                << ": Var = " << std::setw(6) << v
-                << ", Then = " << std::setw(10) << x1
-                << ", Else = " << std::setw(10) << x0;
+      std::cout << "Create node " << std::setw(10) << *p << ": "
+                << "Var = " << std::setw(6) << v << ", "
+                << "Then = " << std::setw(10) << x1 << ", "
+                << "Else = " << std::setw(10) << x0;
       if(!vOneCounts.empty())
-        std::cout << " Ones = " << vOneCounts[*q];
+        std::cout << ", Ones = " << std::setw(10) << vOneCounts[*q];
       std::cout << std::endl;
     }
     vUniqueCounts[v]++;
