@@ -1,5 +1,5 @@
-#ifndef NEXT_BDD_MAN_H
-#define NEXT_BDD_MAN_H
+#ifndef NEXT_BDD_H
+#define NEXT_BDD_H
 
 #include <limits>
 #include <vector>
