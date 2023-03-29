@@ -379,9 +379,8 @@ namespace NextBdd {
     nReo = p.nReo;
     MaxGrowth = p.MaxGrowth;
     fReoVerbose = p.fReoVerbose;
-    if(nGbc || nReo != BvarMax()) {
+    if(nGbc || nReo != BvarMax())
       vRefs.resize(nObjsAlloc);
-    }
   }
   Man::~Man() {
     if(nVerbose) {
@@ -439,10 +438,8 @@ namespace NextBdd {
   void Man::PrintStats() {
     bvar nRemoved = 0;
     bvar a = RemovedHead;
-    while(a) {
-      nRemoved++;
-      a = vNexts[a];
-    }
+    while(a)
+      a = vNexts[a], nRemoved++;
     bvar nLive = 1;
     for(var v = 0; v < nVars; v++)
       nLive += vUniqueCounts[v];
