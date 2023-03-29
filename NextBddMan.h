@@ -10,7 +10,7 @@ namespace NextBdd {
   struct Param {
     int nObjsAllocLog = 20;
     int nObjsMaxLog = 25;
-    int nUniqueLog = 10;
+    int nUniqueSizeLog = 10;
     double UniqueDensity = 4;
     int nCacheSizeLog = 15;
     int nCacheMaxLog = 20;
@@ -195,12 +195,12 @@ namespace NextBdd {
       nObjsAlloc = (bvar)nObjsAllocLit;
     if(nObjsAlloc <= (bvar)nVars)
       throw std::invalid_argument("nObjsAlloc must be larger than nVars");
-    uniq nUnique = (uniq)1 << p.nUniqueLog;
-    if(!nUnique)
-      throw std::length_error("Memout (nUnique) in init");
+    uniq nUniqueSize = (uniq)1 << p.nUniqueSizeLog;
+    if(!nUniqueSize)
+      throw std::length_error("Memout (nUniqueSize) in init");
     // allocation
     if(nVerbose)
-      std::cout << "Allocating " << nObjsAlloc << " nodes and " << nVars << " x " << nUnique << " unique table entries" << std::endl;
+      std::cout << "Allocating " << nObjsAlloc << " nodes and " << nVars << " x " << nUniqueSize << " unique table entries" << std::endl;
     vVars.resize(nObjsAlloc);
     vObjs.resize((lit)nObjsAlloc * 2);
     vNexts.resize(nObjsAlloc);
@@ -210,12 +210,12 @@ namespace NextBdd {
     vUniqueCounts.resize(nVars);
     vUniqueTholds.resize(nVars);
     for(var v = 0; v < nVars; v++) {
-      vvUnique[v].resize(nUnique);
-      vUniqueMasks[v] = nUnique - 1;
-      if(nUnique * p.UniqueDensity > (double)BvarMax())
+      vvUnique[v].resize(nUniqueSize);
+      vUniqueMasks[v] = nUniqueSize - 1;
+      if((lit)(nUniqueSize * p.UniqueDensity) > (lit)BvarMax())
         vUniqueTholds[v] = BvarMax();
       else
-        vUniqueTholds[v] = (bvar)(nUnique * p.UniqueDensity);
+        vUniqueTholds[v] = (bvar)(nUniqueSize * p.UniqueDensity);
     }
     if(p.fCountOnes) {
       if(nVars > 1023)
@@ -401,21 +401,21 @@ namespace NextBdd {
   }
 
   inline void Man::ResizeUnique(var v) {
-    uniq nUnique, nUniqueOld;
-    nUnique = nUniqueOld = vvUnique[v].size();
-    nUnique <<= 1;
-    if(!nUnique) {
+    uniq nUniqueSize, nUniqueSizeOld;
+    nUniqueSize = nUniqueSizeOld = vvUnique[v].size();
+    nUniqueSize <<= 1;
+    if(!nUniqueSize) {
       vUniqueTholds[v] = BvarMax();
       return;
     }
     if(nVerbose >= 2)
-      std::cout << "Reallocating " << nUnique << " unique table entries for Var " << v << std::endl;
-    vvUnique[v].resize(nUnique);
-    vUniqueMasks[v] = nUnique - 1;
-    for(uniq i = 0; i < nUniqueOld; i++) {
+      std::cout << "Reallocating " << nUniqueSize << " unique table entries for Var " << v << std::endl;
+    vvUnique[v].resize(nUniqueSize);
+    vUniqueMasks[v] = nUniqueSize - 1;
+    for(uniq i = 0; i < nUniqueSizeOld; i++) {
       std::vector<bvar>::iterator q, tail, tail1, tail2;
       q = tail1 = vvUnique[v].begin() + i;
-      tail2 = q + nUniqueOld;
+      tail2 = q + nUniqueSizeOld;
       while(*q) {
         uniq hash = UniqHash(ThenOfBvar(*q), ElseOfBvar(*q)) & vUniqueMasks[v];
         if(hash == i)
