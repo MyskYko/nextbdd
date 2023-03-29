@@ -8,20 +8,20 @@
 namespace NextBdd {
 
   struct Param {
-    int nObjsAllocLog = 20;
-    int nObjsMaxLog = 25;
-    int nUniqueSizeLog = 10;
-    double UniqueDensity = 4;
-    int nCacheSizeLog = 15;
-    int nCacheMaxLog = 20;
-    int nCacheVerbose = 0;
-    bool fCountOnes = false;
+    int    nObjsAllocLog  = 20;
+    int    nObjsMaxLog    = 25;
+    int    nUniqueSizeLog = 10;
+    double UniqueDensity  = 4;
+    int    nCacheSizeLog  = 15;
+    int    nCacheMaxLog   = 20;
+    int    nCacheVerbose  = 0;
+    bool   fCountOnes     = false;
+    int    nGbc           = 0;
+    bvar   nReo           = BvarMax();
+    double MaxGrowth      = 1.2;
+    bool   fReoVerbose    = false;
+    int    nVerbose       = 0;
     std::vector<var> *pVar2Level = NULL;
-    int nGbc = 0;
-    bvar nReo = BvarMax();
-    double MaxGrowth = 1.2;
-    bool fReoVerbose = false;
-    int nVerbose = 0;
   };
 
   class Man {
@@ -32,89 +32,89 @@ namespace NextBdd {
     bvar CountNodes();
     bvar CountNodes(std::vector<lit> const &vLits);
     void PrintStats();
-    lit And(lit x, lit y);
+    lit  And(lit x, lit y);
     bool Gbc();
     void Reorder();
 
   private:
-    var nVars;
-    bvar nObjs;
-    bvar nObjsAlloc;
-    bvar nObjsMax;
-    bvar RemovedHead;
-    int nGbc;
-    bvar nReo;
+    var    nVars;
+    bvar   nObjs;
+    bvar   nObjsAlloc;
+    bvar   nObjsMax;
+    bvar   RemovedHead;
+    int    nGbc;
+    bvar   nReo;
     double MaxGrowth;
-    bool fReoVerbose;
-    int nVerbose;
-    std::vector<var> vVars;
-    std::vector<var> Var2Level;
-    std::vector<var> Level2Var;
-    std::vector<lit> vObjs;
-    std::vector<bvar> vNexts;
-    std::vector<bool> vMarks;
-    std::vector<ref> vRefs;
-    std::vector<edge> vEdges;
+    bool   fReoVerbose;
+    int    nVerbose;
+    std::vector<var>    vVars;
+    std::vector<var>    Var2Level;
+    std::vector<var>    Level2Var;
+    std::vector<lit>    vObjs;
+    std::vector<bvar>   vNexts;
+    std::vector<bool>   vMarks;
+    std::vector<ref>    vRefs;
+    std::vector<edge>   vEdges;
     std::vector<double> vOneCounts;
+    std::vector<uniq>   vUniqueMasks;
+    std::vector<bvar>   vUniqueCounts;
+    std::vector<bvar>   vUniqueTholds;
     std::vector<std::vector<bvar> > vvUnique;
-    std::vector<uniq> vUniqueMasks;
-    std::vector<bvar> vUniqueCounts;
-    std::vector<bvar> vUniqueTholds;
     Cache *cache;
 
     inline lit UniqueCreateInt(var v, lit x1, lit x0);
     inline lit UniqueCreate(var v, lit x1, lit x0);
     bool Resize();
     void ResizeUnique(var v);
-    lit And_rec(lit x, lit y);
+    lit  And_rec(lit x, lit y);
     bvar Swap(var i);
     void Sift();
 
   public:
-    inline lit Const0() const { return (lit)0; }
-    inline lit Const1() const { return (lit)1; }
-    inline lit IthVar(var v) const { return Bvar2Lit((bvar)v + 1); }
-    inline lit LitRegular(lit x) const { return x & ~(lit)1; }
-    inline lit LitIrregular(lit x) const { return x | (lit)1; }
-    inline lit LitNot(lit x) const { return x ^ (lit)1; }
-    inline lit LitNotCond(lit x, bool c) const { return x ^ (lit)c; }
-    inline bool LitIsCompl(lit x) const { return x & (lit)1; }
-    inline var Var(lit x) const { return vVars[Lit2Bvar(x)]; }
-    inline var Level(lit x) const { return Var2Level[Var(x)]; }
-    inline lit Then(lit x) const { return LitNotCond(vObjs[LitRegular(x)], LitIsCompl(x)); }
-    inline lit Else(lit x) const { return LitNotCond(vObjs[LitIrregular(x)], LitIsCompl(x)); }
-    inline double OneCount(lit x) const {
+    inline lit  Const0()                  const { return (lit)0;                   }
+    inline lit  Const1()                  const { return (lit)1;                   }
+    inline lit  IthVar(var v)             const { return Bvar2Lit((bvar)v + 1);    }
+    inline lit  LitRegular(lit x)         const { return x & ~(lit)1;              }
+    inline lit  LitIrregular(lit x)       const { return x | (lit)1;               }
+    inline lit  LitNot(lit x)             const { return x ^ (lit)1;               }
+    inline lit  LitNotCond(lit x, bool c) const { return x ^ (lit)c;               }
+    inline bool LitIsCompl(lit x)         const { return x & (lit)1;               }
+    inline var  Var(lit x)                const { return vVars[Lit2Bvar(x)];       }
+    inline var  Level(lit x)              const { return Var2Level[Var(x)];        }
+    inline lit  Then(lit x)               const { return LitNotCond(vObjs[LitRegular(x)], LitIsCompl(x));   }
+    inline lit  Else(lit x)               const { return LitNotCond(vObjs[LitIrregular(x)], LitIsCompl(x)); }
+    inline double OneCount(lit x)         const {
       if(vOneCounts.empty())
         throw std::logic_error("fCountOnes was not set");
       if(LitIsCompl(x))
         return std::pow(2.0, nVars) - vOneCounts[Lit2Bvar(x)];
       return vOneCounts[Lit2Bvar(x)];
     }
-    inline ref Ref(lit x) const { return vRefs[Lit2Bvar(x)]; }
-    inline void IncRef(lit x) { if(!vRefs.empty() && Ref(x) != RefMax()) vRefs[Lit2Bvar(x)]++; }
-    inline void DecRef(lit x) { if(!vRefs.empty() && Ref(x) != RefMax()) vRefs[Lit2Bvar(x)]--; }
-    inline lit Bvar2Lit(bvar a) const { return (lit)a << 1; }
-    inline lit Bvar2Lit(bvar a, bool c) const { return ((lit)a << 1) ^ (lit)c; }
-    inline bvar Lit2Bvar(lit x) const { return (bvar)(x >> 1); }
-    inline var VarOfBvar(bvar a) const { return vVars[a]; }
-    inline lit ThenOfBvar(bvar a) const { return vObjs[Bvar2Lit(a)]; }
-    inline lit ElseOfBvar(bvar a) const { return vObjs[Bvar2Lit(a, true)]; }
-    inline ref RefOfBvar(bvar a) const { return vRefs[a]; }
+    inline ref  Ref(lit x)                const { return vRefs[Lit2Bvar(x)];       }
+    inline void IncRef(lit x)                   { if(!vRefs.empty() && Ref(x) != RefMax()) vRefs[Lit2Bvar(x)]++; }
+    inline void DecRef(lit x)                   { if(!vRefs.empty() && Ref(x) != RefMax()) vRefs[Lit2Bvar(x)]--; }
+    inline lit  Bvar2Lit(bvar a)          const { return (lit)a << 1;              }
+    inline lit  Bvar2Lit(bvar a, bool c)  const { return ((lit)a << 1) ^ (lit)c;   }
+    inline bvar Lit2Bvar(lit x)           const { return (bvar)(x >> 1);           }
+    inline var  VarOfBvar(bvar a)         const { return vVars[a];                 }
+    inline lit  ThenOfBvar(bvar a)        const { return vObjs[Bvar2Lit(a)];       }
+    inline lit  ElseOfBvar(bvar a)        const { return vObjs[Bvar2Lit(a, true)]; }
+    inline ref  RefOfBvar(bvar a)         const { return vRefs[a];                 }
 
   private:
-    inline bool Mark(lit x) const { return vMarks[Lit2Bvar(x)]; }
-    inline edge Edge(lit x) const { return vEdges[Lit2Bvar(x)]; }
-    inline void SetMark(lit x) { vMarks[Lit2Bvar(x)] = true; }
-    inline void ResetMark(lit x) { vMarks[Lit2Bvar(x)] = false; }
-    inline void IncEdge(lit x) { vEdges[Lit2Bvar(x)]++; }
-    inline void DecEdge(lit x) { vEdges[Lit2Bvar(x)]--; }
-    inline bool MarkOfBvar(bvar a) const { return vMarks[a]; }
-    inline edge EdgeOfBvar(bvar a) const { return vEdges[a]; }
-    inline void SetVarOfBvar(bvar a, var v) { vVars[a] = v; }
-    inline void SetThenOfBvar(bvar a, lit x) { vObjs[Bvar2Lit(a)] = x; }
-    inline void SetElseOfBvar(bvar a, lit x) { vObjs[Bvar2Lit(a, true)] = x; }
-    inline void SetMarkOfBvar(bvar a) { vMarks[a] = true; }
-    inline void ResetMarkOfBvar(bvar a) { vMarks[a] = false; }
+    inline bool Mark(lit x)               const { return vMarks[Lit2Bvar(x)];      }
+    inline edge Edge(lit x)               const { return vEdges[Lit2Bvar(x)];      }
+    inline void SetMark(lit x)                  { vMarks[Lit2Bvar(x)] = true;      }
+    inline void ResetMark(lit x)                { vMarks[Lit2Bvar(x)] = false;     }
+    inline void IncEdge(lit x)                  { vEdges[Lit2Bvar(x)]++;           }
+    inline void DecEdge(lit x)                  { vEdges[Lit2Bvar(x)]--;           }
+    inline bool MarkOfBvar(bvar a)        const { return vMarks[a];                }
+    inline edge EdgeOfBvar(bvar a)        const { return vEdges[a];                }
+    inline void SetVarOfBvar(bvar a, var v)     { vVars[a] = v;                    }
+    inline void SetThenOfBvar(bvar a, lit x)    { vObjs[Bvar2Lit(a)] = x;          }
+    inline void SetElseOfBvar(bvar a, lit x)    { vObjs[Bvar2Lit(a, true)] = x;    }
+    inline void SetMarkOfBvar(bvar a)           { vMarks[a] = true;                }
+    inline void ResetMarkOfBvar(bvar a)         { vMarks[a] = false;               }
     inline void RemoveBvar(bvar a) {
       var v = VarOfBvar(a);
       SetVarOfBvar(a, VarMax());
@@ -377,7 +377,7 @@ namespace NextBdd {
     return LitIsCompl(x0)? LitNot(x): x;
   }
 
-  inline bool Man::Resize() {
+  bool Man::Resize() {
     if(nObjsAlloc == nObjsMax)
       return false;
     lit nObjsAllocLit = (lit)nObjsAlloc << 1;
@@ -400,7 +400,7 @@ namespace NextBdd {
     return true;
   }
 
-  inline void Man::ResizeUnique(var v) {
+  void Man::ResizeUnique(var v) {
     uniq nUniqueSize, nUniqueSizeOld;
     nUniqueSize = nUniqueSizeOld = vvUnique[v].size();
     nUniqueSize <<= 1;
