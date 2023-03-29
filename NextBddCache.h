@@ -40,7 +40,8 @@ namespace NextBdd {
     if(!(nMax << 1))
       throw std::length_error("Memout (nCacheMax) in init");
     nSize = (cac)1 << nCacheSizeLog;
-    std::cout << "Allocating " << nSize << " cache entries" << std::endl;
+    if(nVerbose)
+      std::cout << "Allocating " << nSize << " cache entries" << std::endl;
     vCache.resize(nSize * 3);
     Mask = nSize - 1;
     nLookups = 0;
@@ -57,7 +58,7 @@ namespace NextBdd {
     nLookups++;
     if(nLookups > nThold) {
       double NewHitRate = (double)nHits / nLookups;
-      if(nVerbose > 2)
+      if(nVerbose >= 2)
         std::cout << "Cache Hits: " << std::setw(10) << nHits << ", "
                   << "Lookups: " << std::setw(10) << nLookups << ", "
                   << "Rate: " << std::setw(10) << NewHitRate
@@ -75,11 +76,12 @@ namespace NextBdd {
     }
     cac i = (CacHash(x, y) & Mask) * 3;
     if(vCache[i] == x && vCache[i + 1] == y) {
-      if(nVerbose >= 4)
+      if(nVerbose >= 3)
         std::cout << "Cache hit: "
                   << "x = " << std::setw(10) << x << ", "
                   << "y = " << std::setw(10) << y << ", "
-                  << "z = " << std::setw(10) << vCache[i + 2]
+                  << "z = " << std::setw(10) << vCache[i + 2] << ", "
+                  << "hash = " << std::hex << (CacHash(x, y) & Mask) << std::dec
                   << std::endl;
       nHits++;
       return vCache[i + 2];
@@ -91,6 +93,13 @@ namespace NextBdd {
     vCache[i] = x;
     vCache[i + 1] = y;
     vCache[i + 2] = z;
+    if(nVerbose >= 3)
+      std::cout << "Cache ent: "
+                << "x = " << std::setw(10) << x << ", "
+                << "y = " << std::setw(10) << y << ", "
+                << "z = " << std::setw(10) << z << ", "
+                << "hash = " << std::hex << (CacHash(x, y) & Mask) << std::dec
+                << std::endl;
   }
   inline void Cache::Clear() {
     std::fill(vCache.begin(), vCache.end(), 0);
@@ -98,7 +107,7 @@ namespace NextBdd {
   inline void Cache::Resize() {
     cac nSizeOld = nSize;
     nSize <<= 1;
-    if(nVerbose > 1)
+    if(nVerbose >= 2)
       std::cout << "Reallocating " << nSize << " cache entries" << std::endl;
     vCache.resize(nSize * 3);
     Mask = nSize - 1;
@@ -109,6 +118,13 @@ namespace NextBdd {
         vCache[hash] = vCache[i];
         vCache[hash + 1] = vCache[i + 1];
         vCache[hash + 2] = vCache[i + 2];
+        if(nVerbose >= 3)
+          std::cout << "Cache mov: "
+                    << "x = " << std::setw(10) << vCache[i] << ", "
+                    << "y = " << std::setw(10) << vCache[i + 1] << ", "
+                    << "z = " << std::setw(10) << vCache[i + 2] << ", "
+                    << "hash = " << std::hex << (CacHash(vCache[i], vCache[i + 1]) & Mask) << std::dec
+                    << std::endl;
       }
     }
   }

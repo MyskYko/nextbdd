@@ -14,20 +14,30 @@ namespace NextBdd {
     double UniqueDensity = 4;
     int nCacheSizeLog = 15;
     int nCacheMaxLog = 20;
+    int nCacheVerbose = 0;
     std::vector<var> *pVar2Level = NULL;
     bool fCountOnes = false;
+    int nGbc = 0;
+    bvar nReo = BvarMax();
+    double MaxGrowth = 1.2;
+    bool fReoVerbose = false;
+    int nVerbose = 0;
   };
 
   class Man {
   public:
-    Man(int nVars, Param p, int nVerbose);
+    Man(int nVars_, Param p);
     ~Man();
 
     bvar CountNodes();
     bvar CountNodes(std::vector<lit> const &vLits);
     void PrintStats();
+    void SetRef(std::vector<lit> const &vLits);
 
     lit And(lit x, lit y);
+
+    bool Gbc();
+    void Reorder();
 
   private:
     var nVars;
@@ -60,18 +70,17 @@ namespace NextBdd {
 
     int nVerbose;
 
+    bvar CountNodes_rec(lit x);
+
     inline lit UniqueCreateInt(var v, lit x1, lit x0);
     inline lit UniqueCreate(var v, lit x1, lit x0);
     inline void ResizeUnique(var v);
     inline bool Resize();
-    inline bool Gbc();
 
     lit And_rec(lit x, lit y);
 
-    bvar CountNodes_rec(lit x);
-
-    void SetMark_rec(lit x);
-    void ResetMark_rec(lit x);
+    bvar Swap(var i);
+    void Sift();
 
   public:
     inline lit Const0() const { return (lit)0; }
@@ -100,6 +109,15 @@ namespace NextBdd {
     inline void IncRef(lit x) { if(!vRefs.empty() && Ref(x) != RefMax()) vRefs[Lit2Bvar(x)]++; }
     inline void DecRef(lit x) { if(!vRefs.empty() && Ref(x) != RefMax()) vRefs[Lit2Bvar(x)]--; }
 
+    inline lit Bvar2Lit(bvar a) const { return (lit)a << 1; }
+    inline lit Bvar2Lit(bvar a, bool c) const { return ((lit)a << 1) ^ (lit)c; }
+    inline bvar Lit2Bvar(lit x) const { return (bvar)(x >> 1); }
+
+    inline var VarOfBvar(bvar a) const { return vVars[a]; }
+    inline lit ThenOfBvar(bvar a) const { return vObjs[Bvar2Lit(a)]; }
+    inline lit ElseOfBvar(bvar a) const { return vObjs[Bvar2Lit(a, true)]; }
+    inline ref RefOfBvar(bvar a) const { return vRefs[a]; }
+
   private:
     inline bool Mark(lit x) const { return vMarks[Lit2Bvar(x)]; }
     inline edge Edge(lit x) const { return vEdges[Lit2Bvar(x)]; }
@@ -109,15 +127,7 @@ namespace NextBdd {
     inline void IncEdge(lit x) { vEdges[Lit2Bvar(x)]++; }
     inline void DecEdge(lit x) { vEdges[Lit2Bvar(x)]--; }
 
-    inline lit Bvar2Lit(bvar a) const { return (lit)a << 1; }
-    inline lit Bvar2Lit(bvar a, bool c) const { return ((lit)a << 1) ^ (lit)c; }
-    inline bvar Lit2Bvar(lit x) const { return (bvar)(x >> 1); }
-
-    inline var VarOfBvar(bvar a) const { return vVars[a]; }
-    inline lit ThenOfBvar(bvar a) const { return vObjs[Bvar2Lit(a)]; }
-    inline lit ElseOfBvar(bvar a) const { return vObjs[Bvar2Lit(a, true)]; }
     inline bool MarkOfBvar(bvar a) const { return vMarks[a]; }
-    inline ref RefOfBvar(bvar a) const { return vRefs[a]; }
     inline edge EdgeOfBvar(bvar a) const { return vEdges[a]; }
 
     inline void SetVarOfBvar(bvar a, var v) { vVars[a] = v; }
@@ -139,29 +149,76 @@ namespace NextBdd {
       *q = next;
       vUniqueCounts[v]--;
     }
+
+    void SetMark_rec(lit x) {
+      if(x < 2 || Mark(x))
+        return;
+      SetMark(x);
+      SetMark_rec(Then(x));
+      SetMark_rec(Else(x));
+    }
+    void ResetMark_rec(lit x) {
+      if(x < 2 || !Mark(x))
+        return;
+      ResetMark(x);
+      ResetMark_rec(Then(x));
+      ResetMark_rec(Else(x));
+    }
+
+    void CountEdges_rec(lit x) {
+      if(x < 2)
+        return;
+      IncEdge(x);
+      if(Mark(x))
+        return;
+      SetMark(x);
+      CountEdges_rec(Then(x));
+      CountEdges_rec(Else(x));
+    }
+    void CountEdges() {
+      vEdges.resize(nObjsAlloc);
+      for(bvar a = (bvar)nVars + 1; a < nObjs; a++)
+        if(RefOfBvar(a))
+          CountEdges_rec(Bvar2Lit(a));
+      for(bvar a = 1; a <= (bvar)nVars; a++)
+        vEdges[a]++;
+      for(bvar a = (bvar)nVars + 1; a < nObjs; a++)
+        if(RefOfBvar(a))
+          ResetMark_rec(Bvar2Lit(a));
+    }
+    void UncountEdges_rec(lit x) {
+      if(x < 2)
+        return;
+      DecEdge(x);
+      if(Mark(x))
+        return;
+      SetMark(x);
+      UncountEdges_rec(Then(x));
+      UncountEdges_rec(Else(x));
+    }
+    void UncountEdges() {
+      for(bvar a = (bvar)nVars + 1; a < nObjs; a++)
+        if(RefOfBvar(a))
+          UncountEdges_rec(Bvar2Lit(a));
+      for(bvar a = 1; a <= (bvar)nVars; a++)
+        vEdges[a]--;
+      for(bvar a = (bvar)nVars + 1; a < nObjs; a++)
+        if(RefOfBvar(a))
+          ResetMark_rec(Bvar2Lit(a));
+      for(bvar a = 1; a < nObjs; a++)
+        if(EdgeOfBvar(a))
+          std::cout << "Strange edge " << a << " : Edge = " << EdgeOfBvar(a) << std::endl;
+    }
   };
 
-  void Man::SetMark_rec(lit x) {
-    if(x < 2 || Mark(x))
-      return;
-    SetMark(x);
-    SetMark_rec(Then(x));
-    SetMark_rec(Else(x));
-  }
-  void Man::ResetMark_rec(lit x) {
-    if(x < 2 || !Mark(x))
-      return;
-    ResetMark(x);
-    ResetMark_rec(Then(x));
-    ResetMark_rec(Else(x));
-  }
-
-  Man::Man(int nVars, Param p, int nVerbose): nVars(nVars), nVerbose(nVerbose) {
+  Man::Man(int nVars_, Param p) {
+    nVerbose = p.nVerbose;
     // parameter sanity check
     if(p.nObjsMaxLog < p.nObjsAllocLog)
       throw std::invalid_argument("nObjsMax must not be smaller than nObjsAlloc");
-    if(nVars >= (int)VarMax())
+    if(nVars_ >= (int)VarMax())
       throw std::length_error("Memout (nVars) in init");
+    nVars = nVars_;
     lit nObjsMaxLit = (lit)1 << p.nObjsMaxLog;
     if(!nObjsMaxLit)
       throw std::length_error("Memout (nObjsMax) in init");
@@ -206,7 +263,7 @@ namespace NextBdd {
       vOneCounts.resize(nObjsAlloc);
     }
     // set up cache
-    cache = new Cache(p.nCacheSizeLog, p.nCacheMaxLog, nVerbose);
+    cache = new Cache(p.nCacheSizeLog, p.nCacheMaxLog, p.nCacheVerbose);
     // create nodes for variables
     nObjs = 1;
     vVars[0] = VarMax();
@@ -224,10 +281,13 @@ namespace NextBdd {
     }
     // set other parameters
     RemovedHead = 0;
-    nGbc = 0;
-    nReo = BvarMax();
-    MaxGrowth = 0;
-    fReoVerbose = false;
+    nGbc = p.nGbc;
+    nReo = p.nReo;
+    MaxGrowth = p.MaxGrowth;
+    fReoVerbose = p.fReoVerbose;
+    if(nGbc || nReo != BvarMax()) {
+      vRefs.resize(nObjsAlloc);
+    }
   }
   Man::~Man() {
     if(nVerbose) {
@@ -252,7 +312,7 @@ namespace NextBdd {
     return 1 + CountNodes_rec(Then(x)) + CountNodes_rec(Else(x));
   }
   bvar Man::CountNodes() {
-    bvar count = 0;
+    bvar count = 1;
     if(!vEdges.empty()) {
       for(bvar a = 1; a < nObjs; a++)
         if(EdgeOfBvar(a))
@@ -274,12 +334,12 @@ namespace NextBdd {
     return count;
   }
   bvar Man::CountNodes(std::vector<lit> const &vLits) {
-    bvar count = 0;
+    bvar count = 1;
     for(size_t i = 0; i < vLits.size(); i++)
       count += CountNodes_rec(vLits[i]);
     for(size_t i = 0; i < vLits.size(); i++)
       ResetMark_rec(vLits[i]);
-    return count + 1;
+    return count;
   }
 
   void Man::PrintStats() {
@@ -289,13 +349,22 @@ namespace NextBdd {
       nRemoved++;
       a = vNexts[a];
     }
-    if(!vRefs.empty())
-      std::cout << "ref: " << std::setw(10) << CountNodes() << ", ";
-    std::cout << "used: " << std::setw(10) << nObjs << ", "
-              << "live: " << std::setw(10) << nObjs - nRemoved << ", "
+    bvar nLive = 1;
+    for(var v = 0; v < nVars; v++)
+      nLive += vUniqueCounts[v];
+    std::cout << "ref: " << std::setw(10) << (vRefs.empty()? 0: CountNodes()) << ", "
+              << "used: " << std::setw(10) << nObjs << ", "
+              << "live: " << std::setw(10) << nLive << ", "
               << "dead: " << std::setw(10) << nRemoved << ", "
               << "alloc: " << std::setw(10) << nObjsAlloc
               << std::endl;
+  }
+
+  void Man::SetRef(std::vector<lit> const &vLits) {
+    vRefs.clear();
+    vRefs.resize(nObjsAlloc);
+    for(size_t i = 0; i < vLits.size(); i++)
+      IncRef(vLits[i]);
   }
 
   inline lit Man::UniqueCreateInt(var v, lit x1, lit x0) {
@@ -412,38 +481,16 @@ namespace NextBdd {
       vOneCounts.resize(nObjsAlloc);
     return true;
   }
-  inline bool Man::Gbc() {
-    if(nVerbose >= 2)
-      std::cout << "Garbage collect" << std::endl;
-    if(!vEdges.empty()) {
-      for(bvar a = (bvar)nVars + 1; a < nObjs; a++)
-        if(!EdgeOfBvar(a) && VarOfBvar(a) != VarMax())
-          RemoveBvar(a);
-    } else {
-      for(bvar a = (bvar)nVars + 1; a < nObjs; a++)
-        if(RefOfBvar(a))
-          SetMark_rec(Bvar2Lit(a));
-      for(bvar a = (bvar)nVars + 1; a < nObjs; a++)
-        if(!MarkOfBvar(a) && VarOfBvar(a) != VarMax())
-          RemoveBvar(a);
-      for(bvar a = (bvar)nVars + 1; a < nObjs; a++)
-        if(RefOfBvar(a))
-          ResetMark_rec(Bvar2Lit(a));
-    }
-    cache->Clear();
-    return RemovedHead;
-  }
 
   lit Man::And(lit x, lit y) {
-    // if(nObjs > nReo) {
-    //   Reorder(fReoVerbose);
-    //   while(nReo < nObjs) {
-    //     nReo <<= 1;
-    //     if((size)nReo > (size)BvarMax()) {
-    //       nReo = BvarMax();
-    //     }
-    //   }
-    // }
+    if(nObjs > nReo) {
+      Reorder();
+      while(nReo < nObjs) {
+        nReo <<= 1;
+        if((lit)nReo > (lit)BvarMax())
+          nReo = BvarMax();
+      }
+    }
     return And_rec(x, y);
   }
   lit Man::And_rec(lit x, lit y) {
@@ -475,6 +522,198 @@ namespace NextBdd {
     DecRef(z0);
     cache->Insert(x, y, z);
     return z;
+  }
+
+  bool Man::Gbc() {
+    if(nVerbose >= 2)
+      std::cout << "Garbage collect" << std::endl;
+    if(!vEdges.empty()) {
+      for(bvar a = (bvar)nVars + 1; a < nObjs; a++)
+        if(!EdgeOfBvar(a) && VarOfBvar(a) != VarMax())
+          RemoveBvar(a);
+    } else {
+      for(bvar a = (bvar)nVars + 1; a < nObjs; a++)
+        if(RefOfBvar(a))
+          SetMark_rec(Bvar2Lit(a));
+      for(bvar a = (bvar)nVars + 1; a < nObjs; a++)
+        if(!MarkOfBvar(a) && VarOfBvar(a) != VarMax())
+          RemoveBvar(a);
+      for(bvar a = (bvar)nVars + 1; a < nObjs; a++)
+        if(RefOfBvar(a))
+          ResetMark_rec(Bvar2Lit(a));
+    }
+    cache->Clear();
+    return RemovedHead;
+  }
+
+  bvar Man::Swap(var i) {
+    var v1 = Level2Var[i];
+    var v2 = Level2Var[i + 1];
+    bvar f = 0;
+    bvar diff = 0;
+    for(std::vector<bvar>::iterator p = vvUnique[v1].begin(); p != vvUnique[v1].end(); p++) {
+      std::vector<bvar>::iterator q = p;
+      while(*q) {
+        if(!EdgeOfBvar(*q)) {
+          SetVarOfBvar(*q, VarMax());
+          bvar next = vNexts[*q];
+          vNexts[*q] = RemovedHead;
+          RemovedHead = *q;
+          *q = next;
+          vUniqueCounts[v1]--;
+          continue;
+        }
+        lit f1 = ThenOfBvar(*q);
+        lit f0 = ElseOfBvar(*q);
+        if(Var(f1) == v2 || Var(f0) == v2) {
+          DecEdge(f1);
+          if(Var(f1) == v2 && !Edge(f1))
+            DecEdge(Then(f1)), DecEdge(Else(f1)), diff--;
+          DecEdge(f0);
+          if(Var(f0) == v2 && !Edge(f0))
+            DecEdge(Then(f0)), DecEdge(Else(f0)), diff--;
+          bvar next = vNexts[*q];
+          vNexts[*q] = f;
+          f = *q;
+          *q = next;
+          vUniqueCounts[v1]--;
+          continue;
+        }
+        q = vNexts.begin() + *q;
+      }
+    }
+    while(f) {
+      lit f1 = ThenOfBvar(f);
+      lit f0 = ElseOfBvar(f);
+      lit f00, f01, f10, f11;
+      if(Var(f1) == v2)
+        f11 = Then(f1), f10 = Else(f1);
+      else
+        f10 = f11 = f1;
+      if(Var(f0) == v2)
+        f01 = Then(f0), f00 = Else(f0);
+      else
+        f00 = f01 = f0;
+      if(f11 == f01)
+        f1 = f11;
+      else {
+        f1 = UniqueCreate(v1, f11, f01);
+        if(!Edge(f1))
+          IncEdge(f11), IncEdge(f01), diff++;
+      }
+      IncEdge(f1);
+      IncRef(f1);
+      if(f10 == f00)
+        f0 = f10;
+      else {
+        f0 = UniqueCreate(v1, f10, f00);
+        if(!Edge(f0))
+          IncEdge(f10), IncEdge(f00), diff++;
+      }
+      IncEdge(f0);
+      DecRef(f1);
+      SetVarOfBvar(f, v2);
+      SetThenOfBvar(f, f1);
+      SetElseOfBvar(f, f0);
+      std::vector<bvar>::iterator q = vvUnique[v2].begin() + (UniqHash(f1, f0) & vUniqueMasks[v2]);
+      lit next = vNexts[f];
+      vNexts[f] = *q;
+      *q = f;
+      vUniqueCounts[v2]++;
+      f = next;
+    }
+    Var2Level[v1] = i + 1;
+    Var2Level[v2] = i;
+    Level2Var[i] = v2;
+    Level2Var[i + 1] = v1;
+    return diff;
+  }
+  void Man::Sift() {
+    bvar count = CountNodes();
+    std::vector<var> sift_order(nVars);
+    for(var v = 0; v < nVars; v++)
+      sift_order[v] = v;
+    for(var i = 0; i < nVars; i++) {
+      var max_j = i;
+      for(var j = i + 1; j < nVars; j++)
+        if(vUniqueCounts[sift_order[j]] > vUniqueCounts[sift_order[max_j]])
+          max_j = j;
+      if(max_j != i)
+        std::swap(sift_order[max_j], sift_order[i]);
+    }
+    for(var v = 0; v < nVars; v++) {
+      bvar lev = Var2Level[sift_order[v]];
+      bool UpFirst = lev < (bvar)(nVars / 2);
+      bvar min_lev = lev;
+      bvar min_diff = 0;
+      bvar diff = 0;
+      bvar thold = count * (MaxGrowth - 1);
+      if(fReoVerbose)
+        std::cout << "Sift " << sift_order[v] << " : Level = " << lev << " Count = " << count << " Thold = " << thold << std::endl;
+      if(UpFirst) {
+        lev--;
+        for(; lev >= 0; lev--) {
+          diff += Swap(lev);
+          if(fReoVerbose)
+            std::cout << "\tSwap " << lev << " : Diff = " << diff << " Thold = " << thold << std::endl;
+          if(diff < min_diff)
+            min_lev = lev, min_diff = diff, thold = (count + diff) * (MaxGrowth - 1);
+          else if(diff > thold) {
+            lev--;
+            break;
+          }
+        }
+        lev++;
+      }
+      for(; lev < (bvar)nVars - 1; lev++) {
+        diff += Swap(lev);
+        if(fReoVerbose)
+          std::cout << "\tSwap " << lev << " : Diff = " << diff << " Thold = " << thold << std::endl;
+        if(diff <= min_diff)
+          min_lev = lev + 1, min_diff = diff, thold = (count + diff) * (MaxGrowth - 1);
+        else if(diff > thold) {
+          lev++;
+          break;
+        }
+      }
+      lev--;
+      if(UpFirst) {
+        for(; lev >= min_lev; lev--) {
+          diff += Swap(lev);
+          if(fReoVerbose)
+            std::cout << "\tSwap " << lev << " : Diff = " << diff << " Thold = " << thold << std::endl;
+        }
+      } else {
+        for(; lev >= 0; lev--) {
+          diff += Swap(lev);
+          if(fReoVerbose)
+            std::cout << "\tSwap " << lev << " : Diff = " << diff << " Thold = " << thold << std::endl;
+          if(diff <= min_diff)
+            min_lev = lev, min_diff = diff, thold = (count + diff) * (MaxGrowth - 1);
+          else if(diff > thold) {
+            lev--;
+            break;
+          }
+        }
+        lev++;
+        for(; lev < min_lev; lev++) {
+          diff += Swap(lev);
+          if(fReoVerbose)
+            std::cout << "\tSwap " << lev << " : Diff = " << diff << " Thold = " << thold << std::endl;
+        }
+      }
+      count += min_diff;
+      if(fReoVerbose)
+        std::cout << "Sifted " << sift_order[v] << " : Level = " << min_lev << " Count = " << count << " Thold = " << thold << std::endl;
+    }
+  }
+  void Man::Reorder() {
+    if(nVerbose >= 2)
+      std::cout << "Reorder" << std::endl;
+    CountEdges();
+    Sift();
+    vEdges.clear();
+    cache->Clear();
   }
 
 }

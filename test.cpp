@@ -1,6 +1,9 @@
 #include "aig.hpp"
 #include "NextBddMan.h"
 
+#include <map>
+#include <stack>
+
 using namespace std;
 
 using namespace NextBdd;
@@ -9,7 +12,17 @@ int main(int argc, char **argv) {
   aigman aig(argv[1]);
   aig.supportfanouts();
   Param p;
-  Man man(aig.nPis, p, 4);
+
+  // p.nObjsAllocLog = ceil(log2(aig.nPis)) + 1;
+  // p.nUniqueLog = 0;
+  // p.nCacheSizeLog = 10;
+  // p.nGbc = 2;
+
+  // p.nReo = 100;
+  // p.fReoVerbose = 1;
+  // p.nVerbose = 2;
+
+  Man man(aig.nPis, p);
   vector<lit> outputs;
   vector<int> vCounts(aig.nObjs);
   for(int i = aig.nPis + 1; i < aig.nObjs; i++)
@@ -37,7 +50,56 @@ int main(int argc, char **argv) {
     bool c0 = aig.vPos[i] & 1;
     outputs.push_back(man.LitNotCond(nodes[i0], c0));
   }
-  man.PrintStats();
-  std::cout << "node count: " << man.CountNodes(outputs) << std::endl;
+
+  // man.PrintStats();
+  // man.SetRef(outputs);
+  // man.Gbc();
+  // man.Reorder();
+  // man.PrintStats();
+
+  std::cout << man.CountNodes(outputs) << std::endl;
+
+  int nPis = aig.nPis;
+  aig.clear();
+  aig.nPis = nPis;
+  aig.nObjs = aig.nPis + 1;
+  aig.vObjs.resize(aig.nObjs * 2);
+  map<bvar, int> values;
+  values[0] = 0;
+  for(size_t i = 0; i < outputs.size(); i++) {
+    bvar o = man.Lit2Bvar(outputs[i]);
+    if(values.count(o))
+      continue;
+    stack<bvar> bvars;
+    bvars.push(o);
+    while(!bvars.empty()) {
+      bvar a = bvars.top();
+      bvar b = man.Lit2Bvar(man.ThenOfBvar(a));
+      if(b && !values.count(b)) {
+        bvars.push(b);
+        continue;
+      }
+      bvar c = man.Lit2Bvar(man.ElseOfBvar(a));
+      if(c && !values.count(c)) {
+        bvars.push(c);
+        continue;
+      }
+      int v = ((int)man.VarOfBvar(a) + 1) << 1;
+      int p = values[b] ^ (int)man.LitIsCompl(man.ThenOfBvar(a));
+      int q = values[c];
+      int s = aig.newgate(v, p) << 1;
+      int t = aig.newgate(v ^ 1, q) << 1;
+      int r = (aig.newgate(s ^ 1, t ^ 1) << 1) ^ 1;
+      values[a] = r;
+      bvars.pop();
+    }
+  }
+  for(size_t i = 0; i < outputs.size(); i++) {
+    int r = values[man.Lit2Bvar(outputs[i])] ^ man.LitIsCompl(outputs[i]);
+    aig.vPos.push_back(r);
+    aig.nPos++;
+  }
+  aig.write("tmp.aig");
+
   return 0;
 }
