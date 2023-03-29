@@ -46,7 +46,7 @@ namespace NextBdd {
     std::vector<lit> vCache;
   };
   
-  Cache::Cache(int nCacheSizeLog, int nCacheMaxLog, int nVerbose): nVerbose(nVerbose) {
+  inline Cache::Cache(int nCacheSizeLog, int nCacheMaxLog, int nVerbose): nVerbose(nVerbose) {
     if(nCacheMaxLog < nCacheSizeLog)
       throw std::invalid_argument("nCacheMax must not be smaller than nCacheSize");
     nMax = (cac)1 << nCacheMaxLog;
@@ -62,7 +62,7 @@ namespace NextBdd {
     nThold = (nSize == nMax)? SizeMax(): nSize;
     HitRate = 1;
   }
-  Cache::~Cache() {
+  inline Cache::~Cache() {
     if(nVerbose)
       std::cout << "Free " << nSize << " cache entries" << std::endl;
   }
@@ -305,7 +305,7 @@ namespace NextBdd {
     }
   };
 
-  Man::Man(int nVars_, Param p) {
+  inline Man::Man(int nVars_, Param p) {
     nVerbose = p.nVerbose;
     // parameter sanity check
     if(p.nObjsMaxLog < p.nObjsAllocLog)
@@ -382,7 +382,7 @@ namespace NextBdd {
     if(nGbc || nReo != BvarMax())
       vRefs.resize(nObjsAlloc);
   }
-  Man::~Man() {
+  inline Man::~Man() {
     if(nVerbose) {
       std::cout << "Free " << nObjsAlloc << " nodes (" << nObjs << " live nodes)" << std::endl;
       std::cout << "Free {";
@@ -398,14 +398,14 @@ namespace NextBdd {
     delete cache;
   }
 
-  void Man::SetRef(std::vector<lit> const &vLits) {
+  inline void Man::SetRef(std::vector<lit> const &vLits) {
     vRefs.clear();
     vRefs.resize(nObjsAlloc);
     for(size_t i = 0; i < vLits.size(); i++)
       IncRef(vLits[i]);
   }
 
-  bvar Man::CountNodes() {
+  inline bvar Man::CountNodes() {
     bvar count = 1;
     if(!vEdges.empty()) {
       for(bvar a = 1; a < nObjs; a++)
@@ -427,7 +427,7 @@ namespace NextBdd {
         ResetMark_rec(Bvar2Lit(a));
     return count;
   }
-  bvar Man::CountNodes(std::vector<lit> const &vLits) {
+  inline bvar Man::CountNodes(std::vector<lit> const &vLits) {
     bvar count = 1;
     for(size_t i = 0; i < vLits.size(); i++)
       count += CountNodes_rec(vLits[i]);
@@ -435,7 +435,7 @@ namespace NextBdd {
       ResetMark_rec(vLits[i]);
     return count;
   }
-  void Man::PrintStats() {
+  inline void Man::PrintStats() {
     bvar nRemoved = 0;
     bvar a = RemovedHead;
     while(a)
@@ -508,7 +508,7 @@ namespace NextBdd {
     return LitIsCompl(x0)? LitNot(x): x;
   }
 
-  bool Man::Resize() {
+  inline bool Man::Resize() {
     if(nObjsAlloc == nObjsMax)
       return false;
     lit nObjsAllocLit = (lit)nObjsAlloc << 1;
@@ -531,7 +531,7 @@ namespace NextBdd {
     return true;
   }
 
-  void Man::ResizeUnique(var v) {
+  inline void Man::ResizeUnique(var v) {
     uniq nUniqueSize, nUniqueSizeOld;
     nUniqueSize = nUniqueSizeOld = vvUnique[v].size();
     nUniqueSize <<= 1;
@@ -567,7 +567,7 @@ namespace NextBdd {
       vUniqueTholds[v] = BvarMax();
   }
 
-  lit Man::And_rec(lit x, lit y) {
+  inline lit Man::And_rec(lit x, lit y) {
     if(x == 0 || y == 1)
       return x;
     if(x == 1 || y == 0)
@@ -597,7 +597,7 @@ namespace NextBdd {
     cache->Insert(x, y, z);
     return z;
   }
-  lit Man::And(lit x, lit y) {
+  inline lit Man::And(lit x, lit y) {
     if(nObjs > nReo) {
       Reorder();
       while(nReo < nObjs) {
@@ -609,7 +609,7 @@ namespace NextBdd {
     return And_rec(x, y);
   }
 
-  bool Man::Gbc() {
+  inline bool Man::Gbc() {
     if(nVerbose >= 2)
       std::cout << "Garbage collect" << std::endl;
     if(!vEdges.empty()) {
@@ -631,7 +631,7 @@ namespace NextBdd {
     return RemovedHead;
   }
 
-  bvar Man::Swap(var i) {
+  inline bvar Man::Swap(var i) {
     var v1 = Level2Var[i];
     var v2 = Level2Var[i + 1];
     bvar f = 0;
@@ -713,7 +713,7 @@ namespace NextBdd {
     Level2Var[i + 1] = v1;
     return diff;
   }
-  void Man::Sift() {
+  inline void Man::Sift() {
     bvar count = CountNodes();
     std::vector<var> sift_order(nVars);
     for(var v = 0; v < nVars; v++)
@@ -792,7 +792,7 @@ namespace NextBdd {
         std::cout << "Sifted " << sift_order[v] << " : Level = " << min_lev << " Count = " << count << " Thold = " << thold << std::endl;
     }
   }
-  void Man::Reorder() {
+  inline void Man::Reorder() {
     if(nVerbose >= 2)
       std::cout << "Reorder" << std::endl;
     int nGbc_ = nGbc;
