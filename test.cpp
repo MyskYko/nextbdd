@@ -1,5 +1,5 @@
 #include "aig.hpp"
-#include "NextBddMan.h"
+#include "NextBdd.h"
 
 #include <map>
 #include <stack>
@@ -13,12 +13,12 @@ int main(int argc, char **argv) {
   aig.supportfanouts();
   Param p;
 
-  // p.nObjsAllocLog = ceil(log2(aig.nPis)) + 1;
-  // p.nUniqueLog = 0;
-  // p.nCacheSizeLog = 10;
-  // p.nGbc = 2;
+  p.nObjsAllocLog = ceil(log2(aig.nPis)) + 1;
+  p.nUniqueSizeLog = 0;
+  p.nCacheSizeLog = 10;
+  p.nGbc = 2;
 
-  // p.nReo = 100;
+  p.nReo = 100;
   // p.fReoVerbose = 1;
   // p.nVerbose = 2;
 

@@ -9,14 +9,14 @@
 
 namespace NextBdd {
 
-  typedef unsigned short var;
-  typedef int bvar;
-  typedef unsigned lit;
-  typedef unsigned short ref;
+  typedef unsigned short     var;
+  typedef int                bvar;
+  typedef unsigned           lit;
+  typedef unsigned short     ref;
   typedef unsigned long long size;
-  typedef unsigned edge;
-  typedef unsigned uniq;
-  typedef unsigned cac;
+  typedef unsigned           edge;
+  typedef unsigned           uniq;
+  typedef unsigned           cac;
   static inline var  VarMax()  { return std::numeric_limits<var>::max();  }
   static inline bvar BvarMax() { return std::numeric_limits<bvar>::max(); }
   static inline lit  LitMax()  { return std::numeric_limits<lit>::max();  }
