@@ -27,8 +27,7 @@ namespace NextBdd {
 
   class Cache {
   public:
-    Cache(int nCacheSizeLog, int nCacheMaxLog, int nVerbose);
-    ~Cache();
+    Cache(int nCacheSizeLog, int nCacheMaxLog);
     inline lit  Lookup(lit x, lit y);
     inline void Insert(lit x, lit y, lit z);
     inline void Clear();
@@ -42,19 +41,16 @@ namespace NextBdd {
     size   nHits;
     size   nThold;
     double HitRate;
-    int    nVerbose;
     std::vector<lit> vCache;
   };
   
-  Cache::Cache(int nCacheSizeLog, int nCacheMaxLog, int nVerbose): nVerbose(nVerbose) {
+  Cache::Cache(int nCacheSizeLog, int nCacheMaxLog){
     if(nCacheMaxLog < nCacheSizeLog)
       throw std::invalid_argument("nCacheMax must not be smaller than nCacheSize");
     nMax = (cac)1 << nCacheMaxLog;
     if(!(nMax << 1))
       throw std::length_error("Memout (nCacheMax) in init");
     nSize = (cac)1 << nCacheSizeLog;
-    if(nVerbose)
-      std::cout << "Allocating " << nSize << " cache entries" << std::endl;
     vCache.resize(nSize * 3);
     Mask = nSize - 1;
     nLookups = 0;
@@ -62,19 +58,10 @@ namespace NextBdd {
     nThold = (nSize == nMax)? SizeMax(): nSize;
     HitRate = 1;
   }
-  Cache::~Cache() {
-    if(nVerbose)
-      std::cout << "Free " << nSize << " cache entries" << std::endl;
-  }
   inline lit Cache::Lookup(lit x, lit y) {
     nLookups++;
     if(nLookups > nThold) {
       double NewHitRate = (double)nHits / nLookups;
-      if(nVerbose >= 2)
-        std::cout << "Cache Hits: " << std::setw(10) << nHits << ", "
-                  << "Lookups: " << std::setw(10) << nLookups << ", "
-                  << "Rate: " << std::setw(10) << NewHitRate
-                  << std::endl;
       if(NewHitRate > HitRate)
         Resize();
       if(nSize == nMax)
@@ -88,13 +75,6 @@ namespace NextBdd {
     }
     cac i = (CacHash(x, y) & Mask) * 3;
     if(vCache[i] == x && vCache[i + 1] == y) {
-      if(nVerbose >= 3)
-        std::cout << "Cache hit: "
-                  << "x = " << std::setw(10) << x << ", "
-                  << "y = " << std::setw(10) << y << ", "
-                  << "z = " << std::setw(10) << vCache[i + 2] << ", "
-                  << "hash = " << std::hex << (CacHash(x, y) & Mask) << std::dec
-                  << std::endl;
       nHits++;
       return vCache[i + 2];
     }
@@ -105,13 +85,6 @@ namespace NextBdd {
     vCache[i] = x;
     vCache[i + 1] = y;
     vCache[i + 2] = z;
-    if(nVerbose >= 3)
-      std::cout << "Cache ent: "
-                << "x = " << std::setw(10) << x << ", "
-                << "y = " << std::setw(10) << y << ", "
-                << "z = " << std::setw(10) << z << ", "
-                << "hash = " << std::hex << (CacHash(x, y) & Mask) << std::dec
-                << std::endl;
   }
   inline void Cache::Clear() {
     std::fill(vCache.begin(), vCache.end(), 0);
@@ -119,8 +92,6 @@ namespace NextBdd {
   inline void Cache::Resize() {
     cac nSizeOld = nSize;
     nSize <<= 1;
-    if(nVerbose >= 2)
-      std::cout << "Reallocating " << nSize << " cache entries" << std::endl;
     vCache.resize(nSize * 3);
     Mask = nSize - 1;
     for(cac j = 0; j < nSizeOld; j++) {
@@ -130,13 +101,6 @@ namespace NextBdd {
         vCache[hash] = vCache[i];
         vCache[hash + 1] = vCache[i + 1];
         vCache[hash + 2] = vCache[i + 2];
-        if(nVerbose >= 3)
-          std::cout << "Cache mov: "
-                    << "x = " << std::setw(10) << vCache[i] << ", "
-                    << "y = " << std::setw(10) << vCache[i + 1] << ", "
-                    << "z = " << std::setw(10) << vCache[i + 2] << ", "
-                    << "hash = " << std::hex << (CacHash(vCache[i], vCache[i + 1]) & Mask) << std::dec
-                    << std::endl;
       }
     }
   }
@@ -148,13 +112,10 @@ namespace NextBdd {
     double UniqueDensity  = 4;
     int    nCacheSizeLog  = 15;
     int    nCacheMaxLog   = 20;
-    int    nCacheVerbose  = 0;
     bool   fCountOnes     = false;
     int    nGbc           = 0;
     bvar   nReo           = BvarMax();
     double MaxGrowth      = 1.2;
-    bool   fReoVerbose    = false;
-    int    nVerbose       = 0;
     std::vector<var> *pVar2Level = NULL;
   };
 
@@ -179,8 +140,6 @@ namespace NextBdd {
     int    nGbc;
     bvar   nReo;
     double MaxGrowth;
-    bool   fReoVerbose;
-    int    nVerbose;
     std::vector<var>    vVars;
     std::vector<var>    Var2Level;
     std::vector<var>    Level2Var;
@@ -306,7 +265,6 @@ namespace NextBdd {
   };
 
   Man::Man(int nVars_, Param p) {
-    nVerbose = p.nVerbose;
     // parameter sanity check
     if(p.nObjsMaxLog < p.nObjsAllocLog)
       throw std::invalid_argument("nObjsMax must not be smaller than nObjsAlloc");
@@ -333,8 +291,6 @@ namespace NextBdd {
     if(!nUniqueSize)
       throw std::length_error("Memout (nUniqueSize) in init");
     // allocation
-    if(nVerbose)
-      std::cout << "Allocating " << nObjsAlloc << " nodes and " << nVars << " x " << nUniqueSize << " unique table entries" << std::endl;
     vVars.resize(nObjsAlloc);
     vObjs.resize((lit)nObjsAlloc * 2);
     vNexts.resize(nObjsAlloc);
@@ -357,7 +313,7 @@ namespace NextBdd {
       vOneCounts.resize(nObjsAlloc);
     }
     // set up cache
-    cache = new Cache(p.nCacheSizeLog, p.nCacheMaxLog, p.nCacheVerbose);
+    cache = new Cache(p.nCacheSizeLog, p.nCacheMaxLog);
     // create nodes for variables
     nObjs = 1;
     vVars[0] = VarMax();
@@ -378,23 +334,10 @@ namespace NextBdd {
     nGbc = p.nGbc;
     nReo = p.nReo;
     MaxGrowth = p.MaxGrowth;
-    fReoVerbose = p.fReoVerbose;
     if(nGbc || nReo != BvarMax())
       vRefs.resize(nObjsAlloc);
   }
   Man::~Man() {
-    if(nVerbose) {
-      std::cout << "Free " << nObjsAlloc << " nodes (" << nObjs << " live nodes)" << std::endl;
-      std::cout << "Free {";
-      std::string delim;
-      for(var v = 0; v < nVars; v++) {
-        std::cout << delim << vvUnique[v].size();
-        delim = ", ";
-      }
-      std::cout << "} unique table entries" << std::endl;
-      if(!vRefs.empty())
-        std::cout << "Free " << vRefs.size() << " refs" << std::endl;
-    }
     delete cache;
   }
 
@@ -470,15 +413,6 @@ namespace NextBdd {
     vNexts[*p] = next;
     if(!vOneCounts.empty())
       vOneCounts[*p] = OneCount(x1) / 2 + OneCount(x0) / 2;
-    if(nVerbose >= 3) {
-      std::cout << "Create node " << std::setw(10) << *p << ": "
-                << "Var = " << std::setw(6) << v << ", "
-                << "Then = " << std::setw(10) << x1 << ", "
-                << "Else = " << std::setw(10) << x0;
-      if(!vOneCounts.empty())
-        std::cout << ", Ones = " << std::setw(10) << vOneCounts[*q];
-      std::cout << std::endl;
-    }
     vUniqueCounts[v]++;
     if(vUniqueCounts[v] > vUniqueTholds[v]) {
       bvar a = *p;
@@ -516,8 +450,6 @@ namespace NextBdd {
       nObjsAlloc = BvarMax();
     else
       nObjsAlloc = (bvar)nObjsAllocLit;
-    if(nVerbose >= 2)
-      std::cout << "Reallocating " << nObjsAlloc << " nodes" << std::endl;
     vVars.resize(nObjsAlloc);
     vObjs.resize((lit)nObjsAlloc * 2);
     vNexts.resize(nObjsAlloc);
@@ -539,8 +471,6 @@ namespace NextBdd {
       vUniqueTholds[v] = BvarMax();
       return;
     }
-    if(nVerbose >= 2)
-      std::cout << "Reallocating " << nUniqueSize << " unique table entries for Var " << v << std::endl;
     vvUnique[v].resize(nUniqueSize);
     vUniqueMasks[v] = nUniqueSize - 1;
     for(uniq i = 0; i < nUniqueSizeOld; i++) {
@@ -610,8 +540,6 @@ namespace NextBdd {
   }
 
   bool Man::Gbc() {
-    if(nVerbose >= 2)
-      std::cout << "Garbage collect" << std::endl;
     if(!vEdges.empty()) {
       for(bvar a = (bvar)nVars + 1; a < nObjs; a++)
         if(!EdgeOfBvar(a) && VarOfBvar(a) != VarMax())
@@ -733,14 +661,10 @@ namespace NextBdd {
       bvar min_diff = 0;
       bvar diff = 0;
       bvar thold = count * (MaxGrowth - 1);
-      if(fReoVerbose)
-        std::cout << "Sift " << sift_order[v] << " : Level = " << lev << " Count = " << count << " Thold = " << thold << std::endl;
       if(UpFirst) {
         lev--;
         for(; lev >= 0; lev--) {
           diff += Swap(lev);
-          if(fReoVerbose)
-            std::cout << "\tSwap " << lev << " : Diff = " << diff << " Thold = " << thold << std::endl;
           if(diff < min_diff)
             min_lev = lev, min_diff = diff, thold = (count + diff) * (MaxGrowth - 1);
           else if(diff > thold) {
@@ -752,8 +676,6 @@ namespace NextBdd {
       }
       for(; lev < (bvar)nVars - 1; lev++) {
         diff += Swap(lev);
-        if(fReoVerbose)
-          std::cout << "\tSwap " << lev << " : Diff = " << diff << " Thold = " << thold << std::endl;
         if(diff <= min_diff)
           min_lev = lev + 1, min_diff = diff, thold = (count + diff) * (MaxGrowth - 1);
         else if(diff > thold) {
@@ -763,16 +685,11 @@ namespace NextBdd {
       }
       lev--;
       if(UpFirst) {
-        for(; lev >= min_lev; lev--) {
+        for(; lev >= min_lev; lev--)
           diff += Swap(lev);
-          if(fReoVerbose)
-            std::cout << "\tSwap " << lev << " : Diff = " << diff << " Thold = " << thold << std::endl;
-        }
       } else {
         for(; lev >= 0; lev--) {
           diff += Swap(lev);
-          if(fReoVerbose)
-            std::cout << "\tSwap " << lev << " : Diff = " << diff << " Thold = " << thold << std::endl;
           if(diff <= min_diff)
             min_lev = lev, min_diff = diff, thold = (count + diff) * (MaxGrowth - 1);
           else if(diff > thold) {
@@ -781,20 +698,13 @@ namespace NextBdd {
           }
         }
         lev++;
-        for(; lev < min_lev; lev++) {
+        for(; lev < min_lev; lev++)
           diff += Swap(lev);
-          if(fReoVerbose)
-            std::cout << "\tSwap " << lev << " : Diff = " << diff << " Thold = " << thold << std::endl;
-        }
       }
       count += min_diff;
-      if(fReoVerbose)
-        std::cout << "Sifted " << sift_order[v] << " : Level = " << min_lev << " Count = " << count << " Thold = " << thold << std::endl;
     }
   }
   void Man::Reorder() {
-    if(nVerbose >= 2)
-      std::cout << "Reorder" << std::endl;
     int nGbc_ = nGbc;
     nGbc = 0;
     CountEdges();
