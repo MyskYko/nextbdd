@@ -8,15 +8,15 @@
 namespace NextBdd {
 
   struct Param {
-    int nObjsMaxLog = 25;
     int nObjsAllocLog = 20;
+    int nObjsMaxLog = 25;
     int nUniqueLog = 10;
     double UniqueDensity = 4;
     int nCacheSizeLog = 15;
     int nCacheMaxLog = 20;
     int nCacheVerbose = 0;
-    std::vector<var> *pVar2Level = NULL;
     bool fCountOnes = false;
+    std::vector<var> *pVar2Level = NULL;
     int nGbc = 0;
     bvar nReo = BvarMax();
     double MaxGrowth = 1.2;
@@ -28,57 +28,45 @@ namespace NextBdd {
   public:
     Man(int nVars_, Param p);
     ~Man();
-
+    void SetRef(std::vector<lit> const &vLits);
     bvar CountNodes();
     bvar CountNodes(std::vector<lit> const &vLits);
     void PrintStats();
-    void SetRef(std::vector<lit> const &vLits);
-
     lit And(lit x, lit y);
-
     bool Gbc();
     void Reorder();
 
   private:
     var nVars;
-    std::vector<var> Var2Level;
-    std::vector<var> Level2Var;
-
     bvar nObjs;
     bvar nObjsAlloc;
     bvar nObjsMax;
     bvar RemovedHead;
-    std::vector<var> vVars;
-    std::vector<lit> vObjs;
-    std::vector<bvar> vNexts;
-    std::vector<bool> vMarks;
-    std::vector<double> vOneCounts;
-    std::vector<ref> vRefs;
-    std::vector<edge> vEdges;
-
-    std::vector<std::vector<bvar> > vvUnique;
-    std::vector<uniq> vUniqueMasks;
-    std::vector<bvar> vUniqueCounts;
-    std::vector<bvar> vUniqueTholds;
-
-    Cache *cache;
-
     int nGbc;
     bvar nReo;
     double MaxGrowth;
     bool fReoVerbose;
-
     int nVerbose;
-
-    bvar CountNodes_rec(lit x);
+    std::vector<var> vVars;
+    std::vector<var> Var2Level;
+    std::vector<var> Level2Var;
+    std::vector<lit> vObjs;
+    std::vector<bvar> vNexts;
+    std::vector<bool> vMarks;
+    std::vector<ref> vRefs;
+    std::vector<edge> vEdges;
+    std::vector<double> vOneCounts;
+    std::vector<std::vector<bvar> > vvUnique;
+    std::vector<uniq> vUniqueMasks;
+    std::vector<bvar> vUniqueCounts;
+    std::vector<bvar> vUniqueTholds;
+    Cache *cache;
 
     inline lit UniqueCreateInt(var v, lit x1, lit x0);
     inline lit UniqueCreate(var v, lit x1, lit x0);
-    inline void ResizeUnique(var v);
-    inline bool Resize();
-
+    bool Resize();
+    void ResizeUnique(var v);
     lit And_rec(lit x, lit y);
-
     bvar Swap(var i);
     void Sift();
 
@@ -86,12 +74,10 @@ namespace NextBdd {
     inline lit Const0() const { return (lit)0; }
     inline lit Const1() const { return (lit)1; }
     inline lit IthVar(var v) const { return Bvar2Lit((bvar)v + 1); }
-
     inline lit LitRegular(lit x) const { return x & ~(lit)1; }
     inline lit LitIrregular(lit x) const { return x | (lit)1; }
     inline lit LitNot(lit x) const { return x ^ (lit)1; }
     inline lit LitNotCond(lit x, bool c) const { return x ^ (lit)c; }
-
     inline bool LitIsCompl(lit x) const { return x & (lit)1; }
     inline var Var(lit x) const { return vVars[Lit2Bvar(x)]; }
     inline var Level(lit x) const { return Var2Level[Var(x)]; }
@@ -104,15 +90,12 @@ namespace NextBdd {
         return std::pow(2.0, nVars) - vOneCounts[Lit2Bvar(x)];
       return vOneCounts[Lit2Bvar(x)];
     }
-
     inline ref Ref(lit x) const { return vRefs[Lit2Bvar(x)]; }
     inline void IncRef(lit x) { if(!vRefs.empty() && Ref(x) != RefMax()) vRefs[Lit2Bvar(x)]++; }
     inline void DecRef(lit x) { if(!vRefs.empty() && Ref(x) != RefMax()) vRefs[Lit2Bvar(x)]--; }
-
     inline lit Bvar2Lit(bvar a) const { return (lit)a << 1; }
     inline lit Bvar2Lit(bvar a, bool c) const { return ((lit)a << 1) ^ (lit)c; }
     inline bvar Lit2Bvar(lit x) const { return (bvar)(x >> 1); }
-
     inline var VarOfBvar(bvar a) const { return vVars[a]; }
     inline lit ThenOfBvar(bvar a) const { return vObjs[Bvar2Lit(a)]; }
     inline lit ElseOfBvar(bvar a) const { return vObjs[Bvar2Lit(a, true)]; }
@@ -121,21 +104,17 @@ namespace NextBdd {
   private:
     inline bool Mark(lit x) const { return vMarks[Lit2Bvar(x)]; }
     inline edge Edge(lit x) const { return vEdges[Lit2Bvar(x)]; }
-
     inline void SetMark(lit x) { vMarks[Lit2Bvar(x)] = true; }
     inline void ResetMark(lit x) { vMarks[Lit2Bvar(x)] = false; }
     inline void IncEdge(lit x) { vEdges[Lit2Bvar(x)]++; }
     inline void DecEdge(lit x) { vEdges[Lit2Bvar(x)]--; }
-
     inline bool MarkOfBvar(bvar a) const { return vMarks[a]; }
     inline edge EdgeOfBvar(bvar a) const { return vEdges[a]; }
-
     inline void SetVarOfBvar(bvar a, var v) { vVars[a] = v; }
     inline void SetThenOfBvar(bvar a, lit x) { vObjs[Bvar2Lit(a)] = x; }
     inline void SetElseOfBvar(bvar a, lit x) { vObjs[Bvar2Lit(a, true)] = x; }
     inline void SetMarkOfBvar(bvar a) { vMarks[a] = true; }
     inline void ResetMarkOfBvar(bvar a) { vMarks[a] = false; }
-
     inline void RemoveBvar(bvar a) {
       var v = VarOfBvar(a);
       SetVarOfBvar(a, VarMax());
@@ -149,7 +128,6 @@ namespace NextBdd {
       *q = next;
       vUniqueCounts[v]--;
     }
-
     void SetMark_rec(lit x) {
       if(x < 2 || Mark(x))
         return;
@@ -164,7 +142,12 @@ namespace NextBdd {
       ResetMark_rec(Then(x));
       ResetMark_rec(Else(x));
     }
-
+    bvar CountNodes_rec(lit x) {
+      if(x < 2 || Mark(x))
+        return 0;
+      SetMark(x);
+      return 1 + CountNodes_rec(Then(x)) + CountNodes_rec(Else(x));
+    }
     void CountEdges_rec(lit x) {
       if(x < 2)
         return;
@@ -185,29 +168,6 @@ namespace NextBdd {
       for(bvar a = (bvar)nVars + 1; a < nObjs; a++)
         if(RefOfBvar(a))
           ResetMark_rec(Bvar2Lit(a));
-    }
-    void UncountEdges_rec(lit x) {
-      if(x < 2)
-        return;
-      DecEdge(x);
-      if(Mark(x))
-        return;
-      SetMark(x);
-      UncountEdges_rec(Then(x));
-      UncountEdges_rec(Else(x));
-    }
-    void UncountEdges() {
-      for(bvar a = (bvar)nVars + 1; a < nObjs; a++)
-        if(RefOfBvar(a))
-          UncountEdges_rec(Bvar2Lit(a));
-      for(bvar a = 1; a <= (bvar)nVars; a++)
-        vEdges[a]--;
-      for(bvar a = (bvar)nVars + 1; a < nObjs; a++)
-        if(RefOfBvar(a))
-          ResetMark_rec(Bvar2Lit(a));
-      for(bvar a = 1; a < nObjs; a++)
-        if(EdgeOfBvar(a))
-          std::cout << "Strange edge " << a << " : Edge = " << EdgeOfBvar(a) << std::endl;
     }
   };
 
@@ -305,12 +265,13 @@ namespace NextBdd {
     delete cache;
   }
 
-  bvar Man::CountNodes_rec(lit x) {
-    if(x < 2 || Mark(x))
-      return 0;
-    SetMark(x);
-    return 1 + CountNodes_rec(Then(x)) + CountNodes_rec(Else(x));
+  void Man::SetRef(std::vector<lit> const &vLits) {
+    vRefs.clear();
+    vRefs.resize(nObjsAlloc);
+    for(size_t i = 0; i < vLits.size(); i++)
+      IncRef(vLits[i]);
   }
+
   bvar Man::CountNodes() {
     bvar count = 1;
     if(!vEdges.empty()) {
@@ -341,7 +302,6 @@ namespace NextBdd {
       ResetMark_rec(vLits[i]);
     return count;
   }
-
   void Man::PrintStats() {
     bvar nRemoved = 0;
     bvar a = RemovedHead;
@@ -358,13 +318,6 @@ namespace NextBdd {
               << "dead: " << std::setw(10) << nRemoved << ", "
               << "alloc: " << std::setw(10) << nObjsAlloc
               << std::endl;
-  }
-
-  void Man::SetRef(std::vector<lit> const &vLits) {
-    vRefs.clear();
-    vRefs.resize(nObjsAlloc);
-    for(size_t i = 0; i < vLits.size(); i++)
-      IncRef(vLits[i]);
   }
 
   inline lit Man::UniqueCreateInt(var v, lit x1, lit x0) {
@@ -424,6 +377,29 @@ namespace NextBdd {
     return LitIsCompl(x0)? LitNot(x): x;
   }
 
+  inline bool Man::Resize() {
+    if(nObjsAlloc == nObjsMax)
+      return false;
+    lit nObjsAllocLit = (lit)nObjsAlloc << 1;
+    if(nObjsAllocLit > (lit)BvarMax())
+      nObjsAlloc = BvarMax();
+    else
+      nObjsAlloc = (bvar)nObjsAllocLit;
+    if(nVerbose >= 2)
+      std::cout << "Reallocating " << nObjsAlloc << " nodes" << std::endl;
+    vVars.resize(nObjsAlloc);
+    vObjs.resize((lit)nObjsAlloc * 2);
+    vNexts.resize(nObjsAlloc);
+    vMarks.resize(nObjsAlloc);
+    if(!vRefs.empty())
+      vRefs.resize(nObjsAlloc);
+    if(!vEdges.empty())
+      vEdges.resize(nObjsAlloc);
+    if(!vOneCounts.empty())
+      vOneCounts.resize(nObjsAlloc);
+    return true;
+  }
+
   inline void Man::ResizeUnique(var v) {
     uniq nUnique, nUniqueOld;
     nUnique = nUniqueOld = vvUnique[v].size();
@@ -459,40 +435,7 @@ namespace NextBdd {
     if((lit)vUniqueTholds[v] > (lit)BvarMax())
       vUniqueTholds[v] = BvarMax();
   }
-  bool Man::Resize() {
-    if(nObjsAlloc == nObjsMax)
-      return false;
-    lit nObjsAllocLit = (lit)nObjsAlloc << 1;
-    if(nObjsAllocLit > (lit)BvarMax())
-      nObjsAlloc = BvarMax();
-    else
-      nObjsAlloc = (bvar)nObjsAllocLit;
-    if(nVerbose >= 2)
-      std::cout << "Reallocating " << nObjsAlloc << " nodes" << std::endl;
-    vVars.resize(nObjsAlloc);
-    vObjs.resize((lit)nObjsAlloc * 2);
-    vNexts.resize(nObjsAlloc);
-    vMarks.resize(nObjsAlloc);
-    if(!vRefs.empty())
-      vRefs.resize(nObjsAlloc);
-    if(!vEdges.empty())
-      vEdges.resize(nObjsAlloc);
-    if(!vOneCounts.empty())
-      vOneCounts.resize(nObjsAlloc);
-    return true;
-  }
 
-  lit Man::And(lit x, lit y) {
-    if(nObjs > nReo) {
-      Reorder();
-      while(nReo < nObjs) {
-        nReo <<= 1;
-        if((lit)nReo > (lit)BvarMax())
-          nReo = BvarMax();
-      }
-    }
-    return And_rec(x, y);
-  }
   lit Man::And_rec(lit x, lit y) {
     if(x == 0 || y == 1)
       return x;
@@ -522,6 +465,17 @@ namespace NextBdd {
     DecRef(z0);
     cache->Insert(x, y, z);
     return z;
+  }
+  lit Man::And(lit x, lit y) {
+    if(nObjs > nReo) {
+      Reorder();
+      while(nReo < nObjs) {
+        nReo <<= 1;
+        if((lit)nReo > (lit)BvarMax())
+          nReo = BvarMax();
+      }
+    }
+    return And_rec(x, y);
   }
 
   bool Man::Gbc() {
@@ -710,10 +664,13 @@ namespace NextBdd {
   void Man::Reorder() {
     if(nVerbose >= 2)
       std::cout << "Reorder" << std::endl;
+    int nGbc_ = nGbc;
+    nGbc = 0;
     CountEdges();
     Sift();
     vEdges.clear();
     cache->Clear();
+    nGbc = nGbc_;
   }
 
 }
