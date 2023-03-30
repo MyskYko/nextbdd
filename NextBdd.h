@@ -163,6 +163,7 @@ namespace NextBdd {
     Man(int nVars_, Param p);
     ~Man();
     void SetRef(std::vector<lit> const &vLits);
+    void TurnOffReo();
     bvar CountNodes();
     bvar CountNodes(std::vector<lit> const &vLits);
     void PrintStats();
@@ -207,6 +208,8 @@ namespace NextBdd {
   public:
     inline lit  Const0()                  const { return (lit)0;                   }
     inline lit  Const1()                  const { return (lit)1;                   }
+    inline bool IsConst0(lit x)           const { return x == Const0();            }
+    inline bool IsConst1(lit x)           const { return x == Const1();            }
     inline lit  IthVar(var v)             const { return Bvar2Lit((bvar)v + 1);    }
     inline lit  LitRegular(lit x)         const { return x & ~(lit)1;              }
     inline lit  LitIrregular(lit x)       const { return x | (lit)1;               }
@@ -234,6 +237,7 @@ namespace NextBdd {
     inline lit  ThenOfBvar(bvar a)        const { return vObjs[Bvar2Lit(a)];       }
     inline lit  ElseOfBvar(bvar a)        const { return vObjs[Bvar2Lit(a, true)]; }
     inline ref  RefOfBvar(bvar a)         const { return vRefs[a];                 }
+    inline lit  Or(lit x, lit y)                { return LitNot(And(LitNot(x), LitNot(y))); }
 
   private:
     inline bool Mark(lit x)               const { return vMarks[Lit2Bvar(x)];      }
@@ -403,6 +407,9 @@ namespace NextBdd {
     vRefs.resize(nObjsAlloc);
     for(size_t i = 0; i < vLits.size(); i++)
       IncRef(vLits[i]);
+  }
+  inline void Man::TurnOffReo() {
+    nReo = BvarMax();
   }
 
   inline bvar Man::CountNodes() {
