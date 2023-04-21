@@ -216,6 +216,7 @@ namespace NextBdd {
     inline lit  LitNot(lit x)             const { return x ^ (lit)1;               }
     inline lit  LitNotCond(lit x, bool c) const { return x ^ (lit)c;               }
     inline bool LitIsCompl(lit x)         const { return x & (lit)1;               }
+    inline bool LitIsEq(lit x, lit y)     const { return x == y;                   }
     inline var  Var(lit x)                const { return vVars[Lit2Bvar(x)];       }
     inline var  Level(lit x)              const { return Var2Level[Var(x)];        }
     inline lit  Then(lit x)               const { return LitNotCond(vObjs[LitRegular(x)], LitIsCompl(x));   }
